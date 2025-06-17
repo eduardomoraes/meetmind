@@ -28,7 +28,14 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
     }
 
     // Skip very small audio chunks that are unlikely to contain speech
-    if (audioBuffer.length < 10000) { // 10KB minimum
+    if (audioBuffer.length < 5000) { // 5KB minimum
+      return { text: "" };
+    }
+
+    // Check if the buffer contains valid WebM data by looking for WebM signature
+    const webmSignature = Buffer.from([0x1A, 0x45, 0xDF, 0xA3]); // WebM/Matroska signature
+    if (!audioBuffer.subarray(0, 4).equals(webmSignature)) {
+      console.warn("Invalid WebM format detected, skipping transcription");
       return { text: "" };
     }
 
@@ -43,6 +50,13 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
       // Write the audio buffer to a temporary file
       fs.writeFileSync(tempFilePath, audioBuffer);
       
+      // Verify file size
+      const stats = fs.statSync(tempFilePath);
+      if (stats.size < 5000) {
+        fs.unlinkSync(tempFilePath);
+        return { text: "" };
+      }
+      
       // Create a ReadStream for the OpenAI API
       const audioFile = fs.createReadStream(tempFilePath);
       
@@ -50,7 +64,7 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
         file: audioFile,
         model: "whisper-1",
         response_format: "text",
-        language: "en", // You can make this configurable
+        language: "en",
       });
 
       // Clean up the temporary file
@@ -58,7 +72,7 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
       
       const text = transcription.trim();
       if (text) {
-        console.log("Transcription:", text.slice(0, 100) + "...");
+        console.log("Transcription successful:", text.slice(0, 100) + "...");
       }
       
       return { text };
@@ -79,6 +93,8 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
     // Handle specific OpenAI API errors
     if (error?.status === 429 && error?.code === 'insufficient_quota') {
       console.log("OpenAI quota exceeded - transcription unavailable");
+    } else if (error?.status === 400) {
+      console.log("Invalid audio format for transcription:", error.message);
     }
     
     return { text: "" };

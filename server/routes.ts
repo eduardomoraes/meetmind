@@ -282,11 +282,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else if (data.type === 'audio-chunk' && currentMeetingId) {
           // Process audio chunk for transcription
           const audioBuffer = Buffer.from(data.audio, 'base64');
+          console.log(`Received audio chunk: ${audioBuffer.length} bytes for meeting ${currentMeetingId}`);
           
           try {
             const text = await meetingService.processAudioChunk(currentMeetingId, audioBuffer);
+            console.log(`Transcription result: "${text}"`);
             
             if (text.trim()) {
+              console.log(`Sending transcript segment to client: "${text}"`);
               ws.send(JSON.stringify({
                 type: 'transcript-segment',
                 meetingId: currentMeetingId,

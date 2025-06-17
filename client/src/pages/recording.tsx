@@ -80,13 +80,24 @@ export default function Recording() {
     error: audioError,
   } = useAudioRecording({
     onDataAvailable: (audioData) => {
+      console.log(`Sending audio chunk: ${audioData.length} characters (base64)`);
       if (currentMeetingId && sendMessage) {
         sendMessage({
           type: 'audio-chunk',
           audio: audioData,
           meetingId: currentMeetingId,
         });
+      } else {
+        console.warn('Cannot send audio chunk - missing meetingId or sendMessage');
       }
+    },
+    onError: (error) => {
+      console.error('Audio recording error:', error);
+      toast({
+        title: "Audio Error",
+        description: error,
+        variant: "destructive",
+      });
     },
   });
 
@@ -199,11 +210,19 @@ export default function Recording() {
         description: "Meeting recording has been saved. Generating summary...",
       });
       
-      // Redirect to meeting detail after a short delay
+      // Reset meeting state and redirect to dashboard
+      setCurrentMeetingId(null);
+      setTranscriptSegments([]);
+      setStats({
+        duration: 0,
+        wordsTranscribed: 0,
+        speakersDetected: 1,
+        confidence: 95,
+      });
+      
+      // Redirect to dashboard after a short delay
       setTimeout(() => {
-        if (currentMeetingId) {
-          setLocation(`/meetings/${currentMeetingId}`);
-        }
+        setLocation('/');
       }, 2000);
     },
     onError: (error) => {

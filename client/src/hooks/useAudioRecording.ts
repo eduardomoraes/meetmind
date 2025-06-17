@@ -12,7 +12,7 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
   const {
     onDataAvailable,
     onError,
-    mimeType = 'audio/webm;codecs=opus',
+    mimeType = 'audio/webm',
     audioBitsPerSecond = 128000,
     timeslice = 3000, // Send data every 3 seconds for better transcription
   } = options;
