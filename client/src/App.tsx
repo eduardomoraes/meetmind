@@ -24,6 +24,7 @@ function Router() {
           <Route path="/record" component={Recording} />
           <Route path="/meetings/:id" component={MeetingDetail} />
           <Route path="/chat" component={AIChat} />
+          <Route path="/ai-chat" component={AIChat} />
         </>
       )}
       <Route component={NotFound} />

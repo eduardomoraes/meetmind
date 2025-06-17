@@ -76,6 +76,13 @@ export default function AIChat() {
     enabled: !!selectedWorkspaceId,
   });
 
+  // Debug chat history loading
+  useEffect(() => {
+    if (chatHistory) {
+      console.log("Chat history loaded:", chatHistory);
+    }
+  }, [chatHistory]);
+
   // Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: async (messageText: string) => {
@@ -222,6 +229,10 @@ export default function AIChat() {
                 {isChatLoading ? (
                   <div className="flex justify-center py-8">
                     <div className="spinner" />
+                  </div>
+                ) : !chatHistory || chatHistory.length === 0 ? (
+                  <div className="flex justify-center py-8">
+                    <p className="text-slate-500">No chat history yet. Send a message to get started!</p>
                   </div>
                 ) : (
                   chatHistory?.map((chat: ChatMessage) => (
