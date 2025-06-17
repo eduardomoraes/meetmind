@@ -52,26 +52,26 @@ export default function AIChat() {
   }, [isAuthenticated, isLoading, toast]);
 
   // Fetch workspaces
-  const { data: workspaces } = useQuery({
+  const { data: workspaces = [] } = useQuery({
     queryKey: ["/api/workspaces"],
     enabled: isAuthenticated,
   });
 
   // Set default workspace
   useEffect(() => {
-    if (workspaces?.length > 0 && !selectedWorkspaceId) {
+    if (Array.isArray(workspaces) && workspaces.length > 0 && !selectedWorkspaceId) {
       setSelectedWorkspaceId(workspaces[0].id);
     }
   }, [workspaces, selectedWorkspaceId]);
 
   // Fetch recent meetings for context selection
-  const { data: meetings } = useQuery({
+  const { data: meetings = [] } = useQuery({
     queryKey: ["/api/workspaces", selectedWorkspaceId, "meetings"],
     enabled: !!selectedWorkspaceId,
   });
 
   // Fetch chat history
-  const { data: chatHistory, isLoading: isChatLoading } = useQuery({
+  const { data: chatHistory = [], isLoading: isChatLoading } = useQuery({
     queryKey: ["/api/workspaces", selectedWorkspaceId, "chat-history"],
     enabled: !!selectedWorkspaceId,
   });
@@ -87,7 +87,7 @@ export default function AIChat() {
   const sendMessageMutation = useMutation({
     mutationFn: async (messageText: string) => {
       const meetingIds = selectedMeetings === "all" 
-        ? meetings?.slice(0, 5).map(m => m.id) || []
+        ? Array.isArray(meetings) ? meetings.slice(0, 5).map((m: any) => m.id) : []
         : selectedMeetings === "none"
         ? []
         : [parseInt(selectedMeetings)];
@@ -166,7 +166,7 @@ export default function AIChat() {
   return (
     <div className="flex min-h-screen bg-white">
       <Sidebar 
-        workspaces={workspaces || []}
+        workspaces={Array.isArray(workspaces) ? workspaces : []}
         selectedWorkspaceId={selectedWorkspaceId}
         onWorkspaceChange={setSelectedWorkspaceId}
         currentPage="chat"
@@ -190,7 +190,7 @@ export default function AIChat() {
               >
                 <option value="all">All Recent Meetings</option>
                 <option value="none">No Specific Meeting</option>
-                {meetings?.map((meeting) => (
+                {Array.isArray(meetings) && meetings.map((meeting: any) => (
                   <option key={meeting.id} value={meeting.id.toString()}>
                     {meeting.title}
                   </option>
@@ -230,12 +230,12 @@ export default function AIChat() {
                   <div className="flex justify-center py-8">
                     <div className="spinner" />
                   </div>
-                ) : !chatHistory || chatHistory.length === 0 ? (
+                ) : !Array.isArray(chatHistory) || chatHistory.length === 0 ? (
                   <div className="flex justify-center py-8">
                     <p className="text-slate-500">No chat history yet. Send a message to get started!</p>
                   </div>
                 ) : (
-                  chatHistory?.map((chat: ChatMessage) => (
+                  Array.isArray(chatHistory) && chatHistory.map((chat: ChatMessage) => (
                     <div key={chat.id} className="space-y-4">
                       {/* User Message */}
                       <div className="flex items-start space-x-3 justify-end">
@@ -245,9 +245,9 @@ export default function AIChat() {
                           </CardContent>
                         </Card>
                         <Avatar className="w-8 h-8 flex-shrink-0">
-                          <AvatarImage src={user?.profileImageUrl} />
+                          <AvatarImage src={(user as any)?.profileImageUrl} />
                           <AvatarFallback>
-                            {user?.firstName?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                            {(user as any)?.firstName?.charAt(0) || (user as any)?.email?.charAt(0) || 'U'}
                           </AvatarFallback>
                         </Avatar>
                       </div>
