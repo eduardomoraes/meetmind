@@ -28,21 +28,25 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
     }
 
     // Skip very small audio chunks that are unlikely to contain speech
-    if (audioBuffer.length < 5000) { // 5KB minimum
+    if (audioBuffer.length < 1000) { // 1KB minimum - lowered threshold
+      console.log(`Audio buffer too small: ${audioBuffer.length} bytes`);
       return { text: "" };
     }
 
-    // Check for common audio file signatures to validate format
-    const isValidAudio = (
-      audioBuffer.subarray(0, 4).equals(Buffer.from([0x1A, 0x45, 0xDF, 0xA3])) || // WebM/Matroska
-      audioBuffer.subarray(0, 4).equals(Buffer.from('ftyp', 'ascii')) || // MP4
-      audioBuffer.subarray(0, 4).equals(Buffer.from('RIFF', 'ascii')) || // WAV
-      audioBuffer.subarray(0, 3).equals(Buffer.from('ID3', 'ascii')) || // MP3
-      audioBuffer.subarray(0, 4).equals(Buffer.from([0xFF, 0xFB, 0x90, 0x00])) // MP3
+    console.log(`Processing audio buffer: ${audioBuffer.length} bytes`);
+    console.log(`First few bytes: ${Array.from(audioBuffer.subarray(0, 8)).map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+
+    // WebM format detection - more comprehensive
+    const isWebM = (
+      audioBuffer.subarray(0, 4).equals(Buffer.from([0x1A, 0x45, 0xDF, 0xA3])) || // EBML header
+      audioBuffer.includes(Buffer.from('webm', 'ascii')) || // Contains 'webm' string
+      audioBuffer.includes(Buffer.from('OpusHead', 'ascii')) // Opus codec header
     );
 
-    if (!isValidAudio) {
-      console.warn("No valid audio format signature detected, attempting transcription anyway");
+    if (isWebM) {
+      console.log("Detected WebM/Opus audio format");
+    } else {
+      console.log("Audio format not clearly identified, proceeding with transcription");
     }
 
     // Create a temporary file for the audio data
@@ -50,23 +54,20 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
     const path = await import('path');
     const os = await import('os');
     
-    // Determine file extension based on content or default to webm
-    let extension = 'webm';
-    if (audioBuffer.subarray(0, 4).equals(Buffer.from('RIFF', 'ascii'))) {
-      extension = 'wav';
-    } else if (audioBuffer.subarray(0, 4).includes(Buffer.from('ftyp', 'ascii')[0])) {
-      extension = 'mp4';
-    }
-    
-    const tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}.${extension}`);
+    // Always use webm for browser-recorded audio
+    const tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.webm`);
+    console.log(`Writing audio to temp file: ${tempFilePath}`);
     
     try {
       // Write the audio buffer to a temporary file
       fs.writeFileSync(tempFilePath, audioBuffer);
       
-      // Verify file size
+      // Verify file was written
       const stats = fs.statSync(tempFilePath);
-      if (stats.size < 5000) {
+      console.log(`Temp file created: ${stats.size} bytes`);
+      
+      if (stats.size < 1000) {
+        console.log("Temp file too small, cleaning up");
         fs.unlinkSync(tempFilePath);
         return { text: "" };
       }
@@ -74,19 +75,22 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
       // Create a ReadStream for the OpenAI API
       const audioFile = fs.createReadStream(tempFilePath);
       
+      console.log("Sending audio to OpenAI Whisper API...");
       const transcription = await openai.audio.transcriptions.create({
         file: audioFile,
         model: "whisper-1",
         response_format: "text",
-        language: "en",
       });
 
       // Clean up the temporary file
       fs.unlinkSync(tempFilePath);
+      console.log("Temp file cleaned up");
       
-      const text = transcription.trim();
+      const text = typeof transcription === 'string' ? transcription.trim() : '';
       if (text) {
-        console.log("Transcription successful:", text.slice(0, 100) + "...");
+        console.log("Transcription successful:", text.slice(0, 100) + (text.length > 100 ? "..." : ""));
+      } else {
+        console.log("OpenAI returned empty transcription");
       }
       
       return { text };
