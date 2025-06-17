@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Pause, Square, Bookmark, CheckSquare, Share, Volume2 } from "lucide-react";
 import { useLocation } from "wouter";
+import type { Workspace } from "@shared/schema";
 
 interface TranscriptSegment {
   id: number;
@@ -57,14 +58,14 @@ export default function Recording() {
   }, [isAuthenticated, isLoading, toast]);
 
   // Fetch workspaces
-  const { data: workspaces } = useQuery({
+  const { data: workspaces } = useQuery<Workspace[]>({
     queryKey: ["/api/workspaces"],
     enabled: isAuthenticated,
   });
 
   // Set default workspace
   useEffect(() => {
-    if (workspaces?.length > 0 && !selectedWorkspaceId) {
+    if (Array.isArray(workspaces) && workspaces.length > 0 && !selectedWorkspaceId) {
       setSelectedWorkspaceId(workspaces[0].id);
     }
   }, [workspaces, selectedWorkspaceId]);
@@ -81,14 +82,16 @@ export default function Recording() {
   } = useAudioRecording({
     onDataAvailable: (audioData) => {
       console.log(`Sending audio chunk: ${audioData.length} characters (base64)`);
-      if (currentMeetingId && sendMessage) {
+      console.log(`Current meeting ID: ${currentMeetingId}, SendMessage available: ${!!sendMessage}`);
+      if (currentMeetingId && sendMessage && connectionStatus === 'Connected') {
+        console.log(`Actually sending audio chunk for meeting ${currentMeetingId}`);
         sendMessage({
           type: 'audio-chunk',
           audio: audioData,
           meetingId: currentMeetingId,
         });
       } else {
-        console.warn('Cannot send audio chunk - missing meetingId or sendMessage');
+        console.warn(`Cannot send audio chunk - meetingId: ${currentMeetingId}, sendMessage: ${!!sendMessage}, connection: ${connectionStatus}`);
       }
     },
     onError: (error) => {
@@ -99,6 +102,7 @@ export default function Recording() {
         variant: "destructive",
       });
     },
+    timeslice: 1000, // Send smaller chunks more frequently for better responsiveness
   });
 
   // Handle WebSocket messages
@@ -142,25 +146,45 @@ export default function Recording() {
       });
       return response.json();
     },
-    onSuccess: (meeting) => {
+    onSuccess: async (meeting) => {
       setCurrentMeetingId(meeting.id);
       setIsRecording(true);
       
-      // Start WebSocket meeting session
-      if (sendMessage) {
+      // Wait for WebSocket connection to be ready
+      let retries = 0;
+      const maxRetries = 10;
+      while (connectionStatus !== 'Connected' && retries < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+        retries++;
+      }
+      
+      if (connectionStatus === 'Connected' && sendMessage) {
+        console.log(`Starting WebSocket session for meeting ${meeting.id}`);
         sendMessage({
           type: 'start-meeting',
           meetingId: meeting.id,
         });
+        
+        // Small delay to ensure server processes the start message
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Start audio recording
+        startAudioRecording();
+        
+        toast({
+          title: "Recording Started",
+          description: "Meeting is now being recorded and transcribed.",
+        });
+      } else {
+        console.error('Failed to establish WebSocket connection');
+        toast({
+          title: "Connection Error",
+          description: "Failed to connect to transcription service. Please try again.",
+          variant: "destructive",
+        });
+        setIsRecording(false);
+        setCurrentMeetingId(null);
       }
-      
-      // Start audio recording
-      startAudioRecording();
-      
-      toast({
-        title: "Recording Started",
-        description: "Meeting is now being recorded and transcribed.",
-      });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
