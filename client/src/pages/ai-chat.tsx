@@ -72,7 +72,7 @@ export default function AIChat() {
 
   // Fetch chat history
   const { data: chatHistory = [], isLoading: isChatLoading } = useQuery({
-    queryKey: ["/api/workspaces", selectedWorkspaceId, "chat-history"],
+    queryKey: [`/api/workspaces/${selectedWorkspaceId}/chat-history`],
     enabled: !!selectedWorkspaceId,
   });
 
@@ -102,7 +102,7 @@ export default function AIChat() {
     onSuccess: () => {
       setMessage("");
       queryClient.invalidateQueries({ 
-        queryKey: ["/api/workspaces", selectedWorkspaceId, "chat-history"] 
+        queryKey: [`/api/workspaces/${selectedWorkspaceId}/chat-history`] 
       });
     },
     onError: (error) => {
