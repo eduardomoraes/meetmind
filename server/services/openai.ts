@@ -27,42 +27,60 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
       return { text: "" };
     }
 
-    if (audioBuffer.length < 1024) {
+    // Skip very small audio chunks that are unlikely to contain speech
+    if (audioBuffer.length < 10000) { // 10KB minimum
       return { text: "" };
     }
 
-    // Create FormData for the OpenAI API
-    const formData = new FormData();
-    const audioBlob = new Blob([audioBuffer], { type: 'audio/webm' });
-    formData.append('file', audioBlob, 'audio.webm');
-    formData.append('model', 'whisper-1');
-    formData.append('response_format', 'text');
-
-    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.text();
-      console.error(`OpenAI API error: ${response.status} ${response.statusText}`, errorData);
+    // Create a temporary file for the audio data
+    const fs = await import('fs');
+    const path = await import('path');
+    const os = await import('os');
+    
+    const tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}.webm`);
+    
+    try {
+      // Write the audio buffer to a temporary file
+      fs.writeFileSync(tempFilePath, audioBuffer);
       
-      // Handle quota exceeded error specifically
-      if (response.status === 429 && errorData.includes('insufficient_quota')) {
-        console.log("OpenAI quota exceeded - transcription unavailable");
+      // Create a ReadStream for the OpenAI API
+      const audioFile = fs.createReadStream(tempFilePath);
+      
+      const transcription = await openai.audio.transcriptions.create({
+        file: audioFile,
+        model: "whisper-1",
+        response_format: "text",
+        language: "en", // You can make this configurable
+      });
+
+      // Clean up the temporary file
+      fs.unlinkSync(tempFilePath);
+      
+      const text = transcription.trim();
+      if (text) {
+        console.log("Transcription:", text.slice(0, 100) + "...");
       }
       
-      return { text: "" };
+      return { text };
+    } catch (fileError) {
+      // Clean up temp file if it exists
+      try {
+        if (fs.existsSync(tempFilePath)) {
+          fs.unlinkSync(tempFilePath);
+        }
+      } catch (cleanupError) {
+        console.warn("Failed to cleanup temp file:", cleanupError);
+      }
+      throw fileError;
     }
-
-    const text = await response.text();
-    console.log("Transcription:", text.slice(0, 50) + "...");
-    return { text: text.trim() };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Transcription error:", error);
+    
+    // Handle specific OpenAI API errors
+    if (error?.status === 429 && error?.code === 'insufficient_quota') {
+      console.log("OpenAI quota exceeded - transcription unavailable");
+    }
+    
     return { text: "" };
   }
 }

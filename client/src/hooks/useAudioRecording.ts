@@ -14,7 +14,7 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
     onError,
     mimeType = 'audio/webm;codecs=opus',
     audioBitsPerSecond = 128000,
-    timeslice = 1000, // Send data every 1 second
+    timeslice = 3000, // Send data every 3 seconds for better transcription
   } = options;
 
   const [isRecording, setIsRecording] = useState(false);
@@ -34,6 +34,7 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
           noiseSuppression: true,
           autoGainControl: true,
           sampleRate: 44100,
+          channelCount: 1, // Mono audio for better transcription
         },
       });
 
@@ -74,7 +75,7 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
       };
 
       mediaRecorder.onerror = (event) => {
-        const errorMessage = `MediaRecorder error: ${event.error?.message || 'Unknown error'}`;
+        const errorMessage = `MediaRecorder error: ${(event as any).error?.message || 'Unknown error'}`;
         setError(errorMessage);
         onError?.(errorMessage);
         stopRecording();
