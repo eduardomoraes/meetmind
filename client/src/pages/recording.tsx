@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -73,6 +73,14 @@ export default function Recording() {
   // WebSocket connection
   const { sendMessage, lastMessage, connectionStatus } = useWebSocket('/ws');
 
+  // Use a ref to store the current meeting ID for the audio callback
+  const currentMeetingIdRef = useRef<number | null>(null);
+
+  // Update the ref whenever currentMeetingId changes
+  useEffect(() => {
+    currentMeetingIdRef.current = currentMeetingId;
+  }, [currentMeetingId]);
+
   // Audio recording hook
   const {
     startRecording: startAudioRecording,
@@ -81,17 +89,18 @@ export default function Recording() {
     error: audioError,
   } = useAudioRecording({
     onDataAvailable: (audioData) => {
+      const meetingId = currentMeetingIdRef.current;
       console.log(`Sending audio chunk: ${audioData.length} characters (base64)`);
-      console.log(`Current meeting ID: ${currentMeetingId}, SendMessage available: ${!!sendMessage}`);
-      if (currentMeetingId && sendMessage && connectionStatus === 'Connected') {
-        console.log(`Actually sending audio chunk for meeting ${currentMeetingId}`);
+      console.log(`Current meeting ID: ${meetingId}, SendMessage available: ${!!sendMessage}`);
+      if (meetingId && sendMessage && connectionStatus === 'Connected') {
+        console.log(`Actually sending audio chunk for meeting ${meetingId}`);
         sendMessage({
           type: 'audio-chunk',
           audio: audioData,
-          meetingId: currentMeetingId,
+          meetingId: meetingId,
         });
       } else {
-        console.warn(`Cannot send audio chunk - meetingId: ${currentMeetingId}, sendMessage: ${!!sendMessage}, connection: ${connectionStatus}`);
+        console.warn(`Cannot send audio chunk - meetingId: ${meetingId}, sendMessage: ${!!sendMessage}, connection: ${connectionStatus}`);
       }
     },
     onError: (error) => {
