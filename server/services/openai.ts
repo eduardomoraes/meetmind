@@ -19,29 +19,36 @@ export interface MeetingSummaryData {
 
 export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: string }> {
   try {
-    // Check if buffer has content
     if (!audioBuffer || audioBuffer.length === 0) {
       return { text: "" };
     }
 
-    // Check minimum size for meaningful audio (2KB)
-    if (audioBuffer.length < 2048) {
+    if (audioBuffer.length < 1024) {
       return { text: "" };
     }
 
-    // Use the OpenAI SDK with proper file handling
-    const audioFile = new File([audioBuffer], 'audio.webm', { 
-      type: 'audio/webm;codecs=opus' 
+    // Create FormData for the OpenAI API
+    const formData = new FormData();
+    const audioBlob = new Blob([audioBuffer], { type: 'audio/webm' });
+    formData.append('file', audioBlob, 'audio.webm');
+    formData.append('model', 'whisper-1');
+    formData.append('response_format', 'text');
+
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: formData,
     });
 
-    const transcription = await openai.audio.transcriptions.create({
-      file: audioFile,
-      model: 'whisper-1',
-      response_format: 'text',
-      language: 'en',
-    });
+    if (!response.ok) {
+      console.error(`OpenAI API error: ${response.status} ${response.statusText}`);
+      return { text: "" };
+    }
 
-    const text = typeof transcription === 'string' ? transcription : transcription.text || '';
+    const text = await response.text();
+    console.log("Transcription:", text.slice(0, 50) + "...");
     return { text: text.trim() };
   } catch (error) {
     console.error("Transcription error:", error);

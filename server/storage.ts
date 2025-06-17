@@ -60,7 +60,7 @@ export interface IStorage {
 
   // Summary operations
   createMeetingSummary(meetingId: number, summary: string, keyTakeaways: string[], decisions: string[]): Promise<MeetingSummary>;
-  getMeetingSummary(meetingId: number): Promise<MeetingSummary | undefined>;
+  getMeetingSummary(meetingId: number): Promise<MeetingSummary | null>;
 
   // Action item operations
   createActionItem(actionItem: InsertActionItem): Promise<ActionItem>;
@@ -161,7 +161,7 @@ export class DatabaseStorage implements IStorage {
     const meeting = await this.getMeeting(id);
     if (!meeting) return undefined;
 
-    const [participants, transcriptSegments, summary, actionItems, tags] = await Promise.all([
+    const [participants, meetingTranscript, summary, actionItems, tags] = await Promise.all([
       db.select().from(meetingParticipants).where(eq(meetingParticipants.meetingId, id)),
       db.select().from(transcriptSegments).where(eq(transcriptSegments.meetingId, id)).orderBy(transcriptSegments.timestamp),
       this.getMeetingSummary(id),
@@ -172,7 +172,7 @@ export class DatabaseStorage implements IStorage {
     return {
       meeting,
       participants,
-      transcriptSegments,
+      transcriptSegments: meetingTranscript,
       summary,
       actionItems,
       tags,
@@ -240,13 +240,13 @@ export class DatabaseStorage implements IStorage {
     return newSummary;
   }
 
-  async getMeetingSummary(meetingId: number): Promise<MeetingSummary | undefined> {
+  async getMeetingSummary(meetingId: number): Promise<MeetingSummary | null> {
     const [summary] = await db
       .select()
       .from(meetingSummaries)
       .where(eq(meetingSummaries.meetingId, meetingId));
     
-    return summary;
+    return summary || null;
   }
 
   // Action item operations
