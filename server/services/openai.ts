@@ -43,7 +43,14 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
     });
 
     if (!response.ok) {
-      console.error(`OpenAI API error: ${response.status} ${response.statusText}`);
+      const errorData = await response.text();
+      console.error(`OpenAI API error: ${response.status} ${response.statusText}`, errorData);
+      
+      // Handle quota exceeded error specifically
+      if (response.status === 429 && errorData.includes('insufficient_quota')) {
+        console.log("OpenAI quota exceeded - transcription unavailable");
+      }
+      
       return { text: "" };
     }
 
@@ -129,9 +136,23 @@ User question: ${query}`,
     });
 
     return response.choices[0].message.content || "I'm sorry, I couldn't generate a response to your query.";
-  } catch (error) {
+  } catch (error: any) {
     console.error("Query answering error:", error);
-    throw new Error("Failed to answer query: " + (error as Error).message);
+    
+    // Handle specific OpenAI API errors
+    if (error?.status === 429 && error?.code === 'insufficient_quota') {
+      return "I'm unable to process your request because the OpenAI API quota has been exceeded. Please check your OpenAI billing settings and add credits to continue using the AI features.";
+    }
+    
+    if (error?.status === 401) {
+      return "There's an issue with the OpenAI API authentication. Please verify your API key is valid and has the necessary permissions.";
+    }
+    
+    if (error?.status >= 500) {
+      return "The OpenAI service is temporarily unavailable. Please try again in a few moments.";
+    }
+    
+    return "I'm experiencing technical difficulties and cannot process your request right now. Please try again later.";
   }
 }
 

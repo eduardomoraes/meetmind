@@ -223,7 +223,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const response = await answerMeetingQuery(message, context);
 
-      // Save the chat message
+      // Save the chat message - always save even if AI response indicates an error
       const chatMessage = await storage.createChatMessage({
         workspaceId,
         userId,
