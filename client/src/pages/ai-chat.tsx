@@ -249,7 +249,7 @@ export default function AIChat() {
                         <Card className="chat-bubble-ai">
                           <CardContent className="p-4">
                             <div className="prose prose-sm max-w-none">
-                              {chat.response.split('\n').map((paragraph, index) => (
+                              {(chat.response || '').split('\n').map((paragraph, index) => (
                                 <p key={index} className="text-slate-800 mb-2 last:mb-0">
                                   {paragraph}
                                 </p>

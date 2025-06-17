@@ -19,19 +19,33 @@ export interface MeetingSummaryData {
 
 export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: string }> {
   try {
-    // Convert buffer to a format OpenAI can handle
-    const file = new File([audioBuffer], "audio.webm", { type: "audio/webm" });
-    
-    const transcription = await openai.audio.transcriptions.create({
-      file: file as any,
-      model: "whisper-1",
-      response_format: "text",
+    // Check if buffer has content
+    if (!audioBuffer || audioBuffer.length === 0) {
+      return { text: "" };
+    }
+
+    // Check minimum size for meaningful audio (2KB)
+    if (audioBuffer.length < 2048) {
+      return { text: "" };
+    }
+
+    // Use the OpenAI SDK with proper file handling
+    const audioFile = new File([audioBuffer], 'audio.webm', { 
+      type: 'audio/webm;codecs=opus' 
     });
 
-    return { text: transcription };
+    const transcription = await openai.audio.transcriptions.create({
+      file: audioFile,
+      model: 'whisper-1',
+      response_format: 'text',
+      language: 'en',
+    });
+
+    const text = typeof transcription === 'string' ? transcription : transcription.text || '';
+    return { text: text.trim() };
   } catch (error) {
     console.error("Transcription error:", error);
-    throw new Error("Failed to transcribe audio: " + (error as Error).message);
+    return { text: "" };
   }
 }
 

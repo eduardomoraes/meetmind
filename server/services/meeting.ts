@@ -94,7 +94,8 @@ export class MeetingService {
     try {
       const meeting = await storage.getMeeting(meetingId);
       if (!meeting) {
-        throw new Error("Meeting not found");
+        console.log("Meeting not found for summary generation:", meetingId);
+        return;
       }
 
       const transcript = await storage.getMeetingTranscript(meetingId);
@@ -104,6 +105,13 @@ export class MeetingService {
 
       if (!fullTranscript.trim()) {
         console.log("No transcript available for meeting", meetingId);
+        // Create a basic summary indicating no content was recorded
+        await storage.createMeetingSummary(
+          meetingId,
+          "This meeting was recorded but no transcript content was captured.",
+          ["No audio content was transcribed"],
+          ["No decisions recorded"]
+        );
         return;
       }
 
