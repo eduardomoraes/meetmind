@@ -32,11 +32,17 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
       return { text: "" };
     }
 
-    // Check if the buffer contains valid WebM data by looking for WebM signature
-    const webmSignature = Buffer.from([0x1A, 0x45, 0xDF, 0xA3]); // WebM/Matroska signature
-    if (!audioBuffer.subarray(0, 4).equals(webmSignature)) {
-      console.warn("Invalid WebM format detected, skipping transcription");
-      return { text: "" };
+    // Check for common audio file signatures to validate format
+    const isValidAudio = (
+      audioBuffer.subarray(0, 4).equals(Buffer.from([0x1A, 0x45, 0xDF, 0xA3])) || // WebM/Matroska
+      audioBuffer.subarray(0, 4).equals(Buffer.from('ftyp', 'ascii')) || // MP4
+      audioBuffer.subarray(0, 4).equals(Buffer.from('RIFF', 'ascii')) || // WAV
+      audioBuffer.subarray(0, 3).equals(Buffer.from('ID3', 'ascii')) || // MP3
+      audioBuffer.subarray(0, 4).equals(Buffer.from([0xFF, 0xFB, 0x90, 0x00])) // MP3
+    );
+
+    if (!isValidAudio) {
+      console.warn("No valid audio format signature detected, attempting transcription anyway");
     }
 
     // Create a temporary file for the audio data
@@ -44,7 +50,15 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
     const path = await import('path');
     const os = await import('os');
     
-    const tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}.webm`);
+    // Determine file extension based on content or default to webm
+    let extension = 'webm';
+    if (audioBuffer.subarray(0, 4).equals(Buffer.from('RIFF', 'ascii'))) {
+      extension = 'wav';
+    } else if (audioBuffer.subarray(0, 4).includes(Buffer.from('ftyp', 'ascii')[0])) {
+      extension = 'mp4';
+    }
+    
+    const tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}.${extension}`);
     
     try {
       // Write the audio buffer to a temporary file

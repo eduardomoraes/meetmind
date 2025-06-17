@@ -40,17 +40,18 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
 
       streamRef.current = stream;
 
-      // Check if the browser supports the specified MIME type
+      // Check for the best supported audio format for transcription
       let finalMimeType = mimeType;
-      if (!MediaRecorder.isTypeSupported(mimeType)) {
-        // Fallback to basic webm if opus is not supported
-        if (MediaRecorder.isTypeSupported('audio/webm')) {
-          finalMimeType = 'audio/webm';
-        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-          finalMimeType = 'audio/mp4';
-        } else {
-          throw new Error('No supported audio format found');
-        }
+      if (MediaRecorder.isTypeSupported('audio/wav')) {
+        finalMimeType = 'audio/wav';
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        finalMimeType = 'audio/mp4';
+      } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        finalMimeType = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        finalMimeType = 'audio/webm';
+      } else {
+        throw new Error('No supported audio format found');
       }
 
       const mediaRecorder = new MediaRecorder(stream, {
