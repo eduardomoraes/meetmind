@@ -85,7 +85,7 @@ export function Sidebar({
   const getNavItemClass = (page: string) => {
     const isActive = currentPage === page || 
       (page === "dashboard" && location === "/") ||
-      (page === "record" && location === "/record") ||
+      (page === "record" && location === "/recording") ||
       (page === "meetings" && location.startsWith("/meetings")) ||
       (page === "chat" && location === "/chat");
     
@@ -179,7 +179,7 @@ export function Sidebar({
             </Link>
           </li>
           <li>
-            <Link href="/record">
+            <Link href="/recording">
               <button className={getNavItemClass("record")}>
                 <Mic className="w-4 h-4" />
                 <span>Record Meeting</span>
