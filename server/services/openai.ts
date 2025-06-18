@@ -10,6 +10,7 @@ const openai = new OpenAI({
 });
 
 export interface MeetingSummaryData {
+  title: string;
   summary: string;
   keyTakeaways: string[];
   decisions: string[];
@@ -121,13 +122,14 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
 
 export async function generateMeetingSummary(transcript: string, meetingTitle: string): Promise<MeetingSummaryData> {
   try {
-    const prompt = `Please analyze the following meeting transcript and provide a structured summary. The meeting title is: "${meetingTitle}"
+    const prompt = `Please analyze the following meeting transcript and provide a structured summary.
 
 Transcript:
 ${transcript}
 
 Please provide a JSON response with the following structure:
 {
+  "title": "A concise, descriptive title for this meeting based on the main topic discussed (e.g., 'Q4 Budget Planning', 'Product Roadmap Review', 'Team Standup - Sprint 15')",
   "summary": "A concise overall summary of the meeting",
   "keyTakeaways": ["Array of key insights and takeaways"],
   "decisions": ["Array of decisions that were made"],

@@ -117,6 +117,11 @@ export class MeetingService {
 
       const summaryData = await generateMeetingSummary(fullTranscript, meeting.title);
 
+      // Update meeting title with AI-generated title
+      if (summaryData.title && summaryData.title !== "New Meeting") {
+        await storage.updateMeeting(meetingId, { title: summaryData.title });
+      }
+
       // Save the summary
       await storage.createMeetingSummary(
         meetingId,
