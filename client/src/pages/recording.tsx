@@ -111,7 +111,7 @@ export default function Recording() {
         variant: "destructive",
       });
     },
-    timeslice: 1000, // Send smaller chunks more frequently for better responsiveness
+    timeslice: 3000, // 3-second chunks for better transcription quality
   });
 
   // Handle WebSocket messages

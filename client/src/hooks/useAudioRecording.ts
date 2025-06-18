@@ -40,18 +40,24 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
 
       streamRef.current = stream;
 
-      // Check for the best supported audio format for transcription
+      // Check for the best supported audio format for OpenAI transcription
+      // Prioritize formats known to work well with OpenAI Whisper API
       let finalMimeType = mimeType;
-      if (MediaRecorder.isTypeSupported('audio/wav')) {
-        finalMimeType = 'audio/wav';
-      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-        finalMimeType = 'audio/mp4';
-      } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+      
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
         finalMimeType = 'audio/webm;codecs=opus';
+        console.log('Using WebM with Opus codec for recording');
       } else if (MediaRecorder.isTypeSupported('audio/webm')) {
         finalMimeType = 'audio/webm';
+        console.log('Using WebM for recording');
+      } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+        finalMimeType = 'audio/ogg;codecs=opus';
+        console.log('Using OGG with Opus codec for recording');
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        finalMimeType = 'audio/mp4';
+        console.log('Using MP4 for recording');
       } else {
-        throw new Error('No supported audio format found');
+        throw new Error('No supported audio format found for OpenAI transcription');
       }
 
       const mediaRecorder = new MediaRecorder(stream, {

@@ -289,7 +289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`Received audio chunk: ${audioBuffer.length} bytes for meeting ${currentMeetingId}`);
           
           // Only process chunks that are large enough to contain meaningful audio data
-          if (audioBuffer.length > 20000) { // At least 20KB for better transcription quality
+          if (audioBuffer.length > 8000) { // At least 8KB for meaningful audio content
             try {
               const text = await meetingService.processAudioChunk(currentMeetingId, audioBuffer);
               console.log(`Transcription result: "${text}"`);
