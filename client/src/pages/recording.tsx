@@ -238,6 +238,11 @@ export default function Recording() {
       // Stop audio recording
       stopAudioRecording();
       
+      // Invalidate meetings cache to update dashboard
+      queryClient.invalidateQueries({ queryKey: [`/api/workspaces/${selectedWorkspaceId}/meetings`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/workspaces/${selectedWorkspaceId}/stats`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/workspaces/${selectedWorkspaceId}/action-items`] });
+      
       toast({
         title: "Recording Stopped",
         description: "Meeting recording has been saved. Generating summary...",
