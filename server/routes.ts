@@ -149,7 +149,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const workspaceId = parseInt(req.params.id);
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+      console.log(`Fetching meetings for workspace ${workspaceId} with limit ${limit}`);
       const meetings = await storage.getWorkspaceMeetings(workspaceId, limit);
+      console.log(`Found ${meetings.length} meetings`, meetings.map(m => ({ id: m.id, title: m.title, hasSummary: !!m.summary })));
       res.json(meetings);
     } catch (error) {
       console.error("Error fetching meetings:", error);

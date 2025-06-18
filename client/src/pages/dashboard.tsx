@@ -56,6 +56,9 @@ export default function Dashboard() {
     enabled: !!selectedWorkspaceId,
   });
 
+  // Debug log
+  console.log("Meetings data:", meetings);
+
   // Fetch action items
   const { data: actionItems } = useQuery({
     queryKey: ["/api/workspaces", selectedWorkspaceId, "action-items"],
