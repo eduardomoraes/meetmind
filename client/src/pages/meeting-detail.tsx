@@ -56,7 +56,7 @@ export default function MeetingDetail() {
 
   // Fetch meeting details
   const { data: meetingData, isLoading: isMeetingLoading } = useQuery({
-    queryKey: ["/api/meetings", meetingId],
+    queryKey: [`/api/meetings/${meetingId}`],
     enabled: isAuthenticated && !!meetingId,
   });
 
@@ -67,7 +67,7 @@ export default function MeetingDetail() {
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/meetings", meetingId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/meetings/${meetingId}`] });
       toast({
         title: "Success",
         description: "Action item updated successfully.",
