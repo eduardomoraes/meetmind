@@ -13,7 +13,7 @@ interface MeetingCardProps {
 export function MeetingCard({ meeting }: MeetingCardProps) {
   const formatDate = (dateValue: string | Date | null) => {
     if (!dateValue) return "No date";
-    const date = new Date(dateValue);
+    const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
     const today = new Date();
     const isToday = date.toDateString() === today.toDateString();
     
