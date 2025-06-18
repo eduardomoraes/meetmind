@@ -46,13 +46,13 @@ export default function Dashboard() {
 
   // Fetch workspace stats
   const { data: stats } = useQuery({
-    queryKey: ["/api/workspaces", selectedWorkspaceId, "stats"],
+    queryKey: [`/api/workspaces/${selectedWorkspaceId}/stats`],
     enabled: !!selectedWorkspaceId,
   });
 
   // Fetch recent meetings
   const { data: meetings } = useQuery({
-    queryKey: ["/api/workspaces", selectedWorkspaceId, "meetings"],
+    queryKey: [`/api/workspaces/${selectedWorkspaceId}/meetings`],
     enabled: !!selectedWorkspaceId,
   });
 
@@ -61,7 +61,7 @@ export default function Dashboard() {
 
   // Fetch action items
   const { data: actionItems } = useQuery({
-    queryKey: ["/api/workspaces", selectedWorkspaceId, "action-items"],
+    queryKey: [`/api/workspaces/${selectedWorkspaceId}/action-items`],
     enabled: !!selectedWorkspaceId,
   });
 
