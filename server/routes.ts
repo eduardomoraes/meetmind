@@ -284,24 +284,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             meetingId: currentMeetingId,
           }));
         } else if (data.type === 'audio-chunk' && currentMeetingId) {
-          // Accumulate audio chunks
+          // Process individual audio chunks to avoid WebM concatenation issues
           const audioBuffer = Buffer.from(data.audio, 'base64');
           console.log(`Received audio chunk: ${audioBuffer.length} bytes for meeting ${currentMeetingId}`);
           
-          audioChunks.push(audioBuffer);
-          
-          // Process accumulated chunks every 10 seconds or when we have enough data
-          const now = Date.now();
-          const hasEnoughData = audioChunks.length >= 3; // At least 3 chunks (9 seconds)
-          const hasTimedOut = now - lastProcessTime > 10000; // 10 seconds
-          
-          if (hasEnoughData || hasTimedOut) {
+          // Only process chunks that are large enough to contain meaningful audio data
+          if (audioBuffer.length > 20000) { // At least 20KB for better transcription quality
             try {
-              // Concatenate all accumulated chunks
-              const combinedBuffer = Buffer.concat(audioChunks);
-              console.log(`Processing ${audioChunks.length} accumulated chunks (${combinedBuffer.length} bytes)`);
-              
-              const text = await meetingService.processAudioChunk(currentMeetingId, combinedBuffer);
+              const text = await meetingService.processAudioChunk(currentMeetingId, audioBuffer);
               console.log(`Transcription result: "${text}"`);
               
               if (text.trim()) {
@@ -313,21 +303,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   timestamp: new Date().toISOString(),
                 }));
               }
-              
-              // Reset for next batch
-              audioChunks = [];
-              lastProcessTime = now;
             } catch (error) {
-              console.error('Error processing audio batch:', error);
-              ws.send(JSON.stringify({
-                type: 'error',
-                message: 'Failed to process audio batch',
-              }));
-              
-              // Reset on error
-              audioChunks = [];
-              lastProcessTime = now;
+              console.error('Error processing audio chunk:', error);
+              // Don't send error to client for individual chunk failures
+              // Continue processing other chunks
             }
+          } else {
+            console.log(`Skipping small audio chunk: ${audioBuffer.length} bytes`);
           }
         } else if (data.type === 'stop-meeting' && currentMeetingId) {
           console.log(`Stopped real-time transcription for meeting ${currentMeetingId}`);
