@@ -2,17 +2,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Users, CheckSquare, ChevronRight, Calendar, Clock } from "lucide-react";
+import { Users, CheckSquare, ChevronRight, Calendar, Clock, Brain } from "lucide-react";
 import { Link } from "wouter";
-import type { Meeting } from "@shared/schema";
+import type { Meeting, MeetingSummary } from "@shared/schema";
 
 interface MeetingCardProps {
-  meeting: Meeting;
+  meeting: Meeting & { summary: MeetingSummary | null };
 }
 
 export function MeetingCard({ meeting }: MeetingCardProps) {
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (dateValue: string | Date | null) => {
+    if (!dateValue) return "No date";
+    const date = new Date(dateValue);
     const today = new Date();
     const isToday = date.toDateString() === today.toDateString();
     
@@ -79,6 +80,19 @@ export function MeetingCard({ meeting }: MeetingCardProps) {
               {meeting.duration && ` • ${formatDuration(meeting.duration)}`}
             </p>
             
+            {/* AI Summary Preview */}
+            {meeting.summary && (
+              <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Brain className="w-4 h-4 text-blue-600" />
+                  <span className="text-sm font-medium text-blue-900">AI Summary</span>
+                </div>
+                <p className="text-sm text-blue-800 line-clamp-2">
+                  {meeting.summary.summary}
+                </p>
+              </div>
+            )}
+
             <div className="flex items-center space-x-4 text-sm text-slate-500">
               <span className="flex items-center space-x-1">
                 <Users className="w-4 h-4" />
@@ -90,6 +104,12 @@ export function MeetingCard({ meeting }: MeetingCardProps) {
                   <Clock className="w-4 h-4" />
                   <span>{meeting.wordCount.toLocaleString()} words</span>
                 </span>
+              )}
+              
+              {meeting.summary && (
+                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                  Summary Available
+                </Badge>
               )}
             </div>
           </div>

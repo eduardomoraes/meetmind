@@ -50,7 +50,7 @@ export interface IStorage {
     actionItems: ActionItem[];
     tags: MeetingTag[];
   } | undefined>;
-  getWorkspaceMeetings(workspaceId: number, limit?: number): Promise<Meeting[]>;
+  getWorkspaceMeetings(workspaceId: number, limit?: number): Promise<(Meeting & { summary: MeetingSummary | null })[]>;
   updateMeeting(id: number, updates: Partial<Meeting>): Promise<Meeting>;
   deleteMeeting(id: number): Promise<void>;
 
@@ -179,7 +179,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getWorkspaceMeetings(workspaceId: number, limit: number = 10): Promise<Meeting[]> {
+  async getWorkspaceMeetings(workspaceId: number, limit: number = 10): Promise<(Meeting & { summary: MeetingSummary | null })[]> {
     const meetingList = await db
       .select()
       .from(meetings)
@@ -187,7 +187,15 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(meetings.createdAt))
       .limit(limit);
     
-    return meetingList;
+    // Fetch summaries for all meetings
+    const meetingsWithSummaries = await Promise.all(
+      meetingList.map(async (meeting) => {
+        const summary = await this.getMeetingSummary(meeting.id);
+        return { ...meeting, summary };
+      })
+    );
+    
+    return meetingsWithSummaries;
   }
 
   async updateMeeting(id: number, updates: Partial<Meeting>): Promise<Meeting> {
