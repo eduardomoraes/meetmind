@@ -186,7 +186,7 @@ export default function Dashboard() {
                   <Card>
                     <CardContent className="p-8 text-center">
                       <p className="text-slate-500">No meetings yet. Start your first recording!</p>
-                      <Link href="/record">
+                      <Link href="/recording">
                         <Button className="mt-4 bg-primary hover:bg-blue-700">
                           Start Recording
                         </Button>
