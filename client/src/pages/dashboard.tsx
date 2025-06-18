@@ -90,7 +90,7 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="flex items-center space-x-3">
-              <Link href="/record">
+              <Link href="/recording">
                 <Button className="bg-green-600 hover:bg-green-700 text-white">
                   <Plus className="w-4 h-4 mr-2" />
                   Start Recording
