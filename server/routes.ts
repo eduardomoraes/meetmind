@@ -289,27 +289,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`Received audio chunk: ${audioBuffer.length} bytes for meeting ${currentMeetingId}`);
           
           // Only process chunks that are large enough to contain meaningful audio data
-          if (audioBuffer.length > 8000) { // At least 8KB for meaningful audio content
+          if (audioBuffer.length > 5000) { // Lowered threshold to 5KB to capture more audio
             try {
+              console.log(`Processing audio chunk of ${audioBuffer.length} bytes for meeting ${currentMeetingId}`);
               const text = await meetingService.processAudioChunk(currentMeetingId, audioBuffer);
-              console.log(`Transcription result: "${text}"`);
+              console.log(`Transcription result for chunk: "${text}"`);
               
               if (text.trim()) {
-                console.log(`Sending transcript segment to client: "${text}"`);
+                console.log(`Adding transcript segment to database: "${text}"`);
                 ws.send(JSON.stringify({
                   type: 'transcript-segment',
                   meetingId: currentMeetingId,
                   text,
                   timestamp: new Date().toISOString(),
                 }));
+              } else {
+                console.log('Empty transcription result - chunk may be silent or audio format issue');
               }
             } catch (error) {
-              console.error('Error processing audio chunk:', error);
-              // Don't send error to client for individual chunk failures
-              // Continue processing other chunks
+              console.error(`Error processing audio chunk for meeting ${currentMeetingId}:`, error.message);
+              // Log specific error details but continue processing
+              if (error.status === 400) {
+                console.log('Audio format error - chunk will be skipped');
+              }
             }
           } else {
-            console.log(`Skipping small audio chunk: ${audioBuffer.length} bytes`);
+            console.log(`Skipping small audio chunk: ${audioBuffer.length} bytes (below 5KB threshold)`);
           }
         } else if (data.type === 'stop-meeting' && currentMeetingId) {
           console.log(`Stopped real-time transcription for meeting ${currentMeetingId}`);

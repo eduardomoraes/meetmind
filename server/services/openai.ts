@@ -55,30 +55,9 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
     const path = await import('path');
     const os = await import('os');
     
-    // Determine file extension based on audio format detection
-    let extension = 'webm';
-    let filename = 'audio.webm';
-    
-    // Check for common audio file signatures in the buffer
-    const header = audioBuffer.slice(0, 16);
-    const headerHex = header.toString('hex');
-    
-    if (headerHex.startsWith('52494646') && headerHex.includes('57415645')) {
-      // RIFF + WAVE = WAV file
-      extension = 'wav';
-      filename = 'audio.wav';
-    } else if (headerHex.startsWith('4f676753')) {
-      // OggS = Ogg file (likely Opus)
-      extension = 'ogg';
-      filename = 'audio.ogg';
-    } else if (headerHex.startsWith('1a45dfa3')) {
-      // WebM/Matroska signature
-      extension = 'webm';
-      filename = 'audio.webm';
-    }
-    
-    const tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${extension}`);
-    console.log(`Writing audio to temp file: ${tempFilePath} (detected format: ${extension})`);
+    // Always save as WebM but pass as MP4 to OpenAI API for better compatibility
+    const tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.mp4`);
+    console.log(`Writing audio to temp file: ${tempFilePath} (treating WebM as MP4 for OpenAI compatibility)`);
     
     try {
       // Write the audio buffer to a temporary file
@@ -94,19 +73,15 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
         return { text: "" };
       }
       
-      // Create a File-like object with proper filename for OpenAI API
+      // Create a readable stream for the OpenAI API
       const audioFile = fs.createReadStream(tempFilePath);
-      // Set filename property for proper MIME type detection
-      Object.defineProperty(audioFile, 'name', {
-        value: filename,
-        writable: false
-      });
       
-      console.log(`Sending ${extension} audio to OpenAI Whisper API with filename: ${filename}`);
+      console.log(`Sending audio to OpenAI Whisper API as MP4 format`);
       const transcription = await openai.audio.transcriptions.create({
         file: audioFile,
         model: "whisper-1",
         response_format: "text",
+        language: "en", // Specify language for better accuracy
       });
 
       // Clean up the temporary file
