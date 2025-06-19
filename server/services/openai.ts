@@ -50,43 +50,82 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
       console.log("Audio format not clearly identified, proceeding with transcription");
     }
 
-    // Create a temporary file for the audio data
+    // Import required modules for audio conversion
     const fs = await import('fs');
     const path = await import('path');
     const os = await import('os');
+    const ffmpeg = await import('fluent-ffmpeg');
+    const ffmpegPath = await import('ffmpeg-static');
     
-    // Always save as WebM but pass as MP4 to OpenAI API for better compatibility
-    const tempFilePath = path.join(os.tmpdir(), `audio-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.mp4`);
-    console.log(`Writing audio to temp file: ${tempFilePath} (treating WebM as MP4 for OpenAI compatibility)`);
+    // Set FFmpeg path
+    if (ffmpegPath.default) {
+      ffmpeg.default.setFfmpegPath(ffmpegPath.default);
+    }
+    
+    // Create temporary file paths
+    const inputPath = path.join(os.tmpdir(), `input-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.webm`);
+    const outputPath = path.join(os.tmpdir(), `output-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.wav`);
     
     try {
-      // Write the audio buffer to a temporary file
-      fs.writeFileSync(tempFilePath, audioBuffer);
+      // Write the original audio buffer
+      fs.writeFileSync(inputPath, audioBuffer);
+      console.log(`Input file written: ${inputPath} (${audioBuffer.length} bytes)`);
       
-      // Verify file was written
-      const stats = fs.statSync(tempFilePath);
-      console.log(`Temp file created: ${stats.size} bytes`);
-      
-      if (stats.size < 1000) {
-        console.log("Temp file too small, cleaning up");
-        fs.unlinkSync(tempFilePath);
+      if (audioBuffer.length < 1000) {
+        console.log("Audio buffer too small, cleaning up");
+        fs.unlinkSync(inputPath);
         return { text: "" };
       }
       
-      // Create a readable stream for the OpenAI API
-      const audioFile = fs.createReadStream(tempFilePath);
+      // Convert WebM to WAV using FFmpeg
+      console.log('Starting FFmpeg conversion to WAV...');
+      await new Promise((resolve, reject) => {
+        ffmpeg.default(inputPath)
+          .toFormat('wav')
+          .audioCodec('pcm_s16le')
+          .audioChannels(1)
+          .audioFrequency(16000)
+          .on('end', () => {
+            console.log('FFmpeg conversion completed successfully');
+            resolve(undefined);
+          })
+          .on('error', (err: any) => {
+            console.error('FFmpeg conversion error:', err.message);
+            reject(err);
+          })
+          .save(outputPath);
+      });
       
-      console.log(`Sending audio to OpenAI Whisper API as MP4 format`);
+      // Verify converted file exists and has content
+      if (!fs.existsSync(outputPath)) {
+        throw new Error('Audio conversion failed - output file not created');
+      }
+      
+      const outputStats = fs.statSync(outputPath);
+      console.log(`Converted WAV file: ${outputPath} (${outputStats.size} bytes)`);
+      
+      if (outputStats.size < 100) {
+        console.log("Converted file too small, cleaning up");
+        fs.unlinkSync(inputPath);
+        fs.unlinkSync(outputPath);
+        return { text: "" };
+      }
+      
+      // Send converted WAV to OpenAI
+      const audioFile = fs.createReadStream(outputPath);
+      
+      console.log(`Sending converted WAV to OpenAI Whisper API`);
       const transcription = await openai.audio.transcriptions.create({
         file: audioFile,
         model: "whisper-1",
         response_format: "text",
-        language: "en", // Specify language for better accuracy
+        language: "en",
       });
 
-      // Clean up the temporary file
-      fs.unlinkSync(tempFilePath);
-      console.log("Temp file cleaned up");
+      // Clean up temporary files
+      fs.unlinkSync(inputPath);
+      fs.unlinkSync(outputPath);
+      console.log("Temporary files cleaned up");
       
       const text = typeof transcription === 'string' ? transcription.trim() : '';
       if (text) {
@@ -97,10 +136,13 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
       
       return { text };
     } catch (fileError) {
-      // Clean up temp file if it exists
+      // Clean up temp files if they exist
       try {
-        if (fs.existsSync(tempFilePath)) {
-          fs.unlinkSync(tempFilePath);
+        if (fs.existsSync(inputPath)) {
+          fs.unlinkSync(inputPath);
+        }
+        if (fs.existsSync(outputPath)) {
+          fs.unlinkSync(outputPath);
         }
       } catch (cleanupError) {
         console.warn("Failed to cleanup temp file:", cleanupError);
