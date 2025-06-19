@@ -44,22 +44,25 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
       // Prioritize formats that work reliably with OpenAI Whisper API
       let finalMimeType = mimeType;
       
-      if (MediaRecorder.isTypeSupported('audio/mp4')) {
-        finalMimeType = 'audio/mp4';
-        console.log('Using MP4 for recording - best OpenAI compatibility');
-      } else if (MediaRecorder.isTypeSupported('audio/wav')) {
-        finalMimeType = 'audio/wav';
-        console.log('Using WAV for recording');
-      } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
-        finalMimeType = 'audio/ogg;codecs=opus';
-        console.log('Using OGG with Opus codec for recording');
-      } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-        finalMimeType = 'audio/webm;codecs=opus';
-        console.log('Using WebM with Opus codec for recording');
-      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-        finalMimeType = 'audio/webm';
-        console.log('Using WebM for recording');
-      } else {
+      // Try formats in order of OpenAI compatibility
+      const preferredFormats = [
+        'audio/mp4',
+        'audio/mpeg',
+        'audio/wav', 
+        'audio/ogg;codecs=opus',
+        'audio/webm;codecs=opus',
+        'audio/webm'
+      ];
+      
+      for (const format of preferredFormats) {
+        if (MediaRecorder.isTypeSupported(format)) {
+          finalMimeType = format;
+          console.log(`Using ${format} for recording - optimized for OpenAI compatibility`);
+          break;
+        }
+      }
+      
+      if (finalMimeType === mimeType && !MediaRecorder.isTypeSupported(finalMimeType)) {
         throw new Error('No supported audio format found for OpenAI transcription');
       }
 
