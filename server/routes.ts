@@ -306,10 +306,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
               } else {
                 console.log('Empty transcription result - chunk may be silent or audio format issue');
               }
-            } catch (error) {
-              console.error(`Error processing audio chunk for meeting ${currentMeetingId}:`, error.message);
+            } catch (error: any) {
+              const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+              console.error(`Error processing audio chunk for meeting ${currentMeetingId}:`, errorMessage);
               // Log specific error details but continue processing
-              if (error.status === 400) {
+              if (error?.status === 400) {
                 console.log('Audio format error - chunk will be skipped');
               }
             }

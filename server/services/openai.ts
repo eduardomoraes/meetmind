@@ -58,8 +58,9 @@ export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: stri
     const ffmpegPath = await import('ffmpeg-static');
     
     // Set FFmpeg path
-    if (ffmpegPath.default) {
-      ffmpeg.default.setFfmpegPath(ffmpegPath.default);
+    const ffmpegBinary = ffmpegPath.default;
+    if (ffmpegBinary && typeof ffmpegBinary === 'string') {
+      ffmpeg.default.setFfmpegPath(ffmpegBinary);
     }
     
     // Create temporary file paths
