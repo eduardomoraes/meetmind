@@ -443,46 +443,46 @@ export default function Recording() {
                 </div>
               </div>
 
-              {transcriptSegments.length === 0 ? (
-                <Card>
-                  <CardContent className="p-8 text-center">
+              <Card>
+                <CardContent className="p-8 text-center">
+                  {processingStatus === 'idle' && (
                     <p className="text-slate-500">
                       {isRecording 
-                        ? "Listening for speech... Start speaking to see live transcription."
-                        : "Start recording to see live transcription here."
+                        ? "Recording conversation... Audio will be processed when you stop the recording."
+                        : "Start recording to capture the full conversation."
                       }
                     </p>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="space-y-4">
-                  {transcriptSegments.map((segment) => (
-                    <Card key={segment.id}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start space-x-3">
-                          <Avatar className="w-8 h-8">
-                            <AvatarImage src={segment.speakerAvatar} />
-                            <AvatarFallback>
-                              {segment.speakerName.charAt(0)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-1">
-                              <span className="font-medium text-slate-900">
-                                {segment.speakerName}
-                              </span>
-                              <span className="text-xs text-slate-500">
-                                {segment.timestamp}
-                              </span>
-                            </div>
-                            <p className="text-slate-800">{segment.text}</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
+                  )}
+                  
+                  {processingStatus === 'processing' && (
+                    <div className="space-y-3">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                      <p className="text-slate-700 font-medium">Processing Recording</p>
+                      <p className="text-slate-500 text-sm">{processingMessage}</p>
+                    </div>
+                  )}
+                  
+                  {processingStatus === 'completed' && (
+                    <div className="space-y-3">
+                      <div className="rounded-full h-8 w-8 bg-green-100 text-green-600 flex items-center justify-center mx-auto">
+                        <CheckSquare className="h-5 w-5" />
+                      </div>
+                      <p className="text-green-700 font-medium">Processing Complete</p>
+                      <p className="text-slate-500 text-sm">{processingMessage}</p>
+                    </div>
+                  )}
+                  
+                  {processingStatus === 'error' && (
+                    <div className="space-y-3">
+                      <div className="rounded-full h-8 w-8 bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+                        <Square className="h-5 w-5" />
+                      </div>
+                      <p className="text-red-700 font-medium">Processing Failed</p>
+                      <p className="text-slate-500 text-sm">{processingMessage}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </div>
 
