@@ -283,39 +283,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
             type: 'meeting-started',
             meetingId: currentMeetingId,
           }));
-        } else if (data.type === 'audio-chunk' && currentMeetingId) {
-          // Process individual audio chunks to avoid WebM concatenation issues
+        } else if (data.type === 'complete-audio' && currentMeetingId) {
+          // Process complete conversation audio after recording ends
           const audioBuffer = Buffer.from(data.audio, 'base64');
-          console.log(`Received audio chunk: ${audioBuffer.length} bytes for meeting ${currentMeetingId}`);
+          console.log(`Received complete audio: ${audioBuffer.length} bytes for meeting ${currentMeetingId}`);
           
-          // Only process chunks that are large enough to contain meaningful audio data
-          if (audioBuffer.length > 5000) { // Lowered threshold to 5KB to capture more audio
+          if (audioBuffer.length > 10000) { // Minimum size for meaningful conversation
             try {
-              console.log(`Processing audio chunk of ${audioBuffer.length} bytes for meeting ${currentMeetingId}`);
-              const text = await meetingService.processAudioChunk(currentMeetingId, audioBuffer);
-              console.log(`Transcription result for chunk: "${text}"`);
+              console.log(`Processing complete audio of ${audioBuffer.length} bytes for meeting ${currentMeetingId}`);
+              const text = await meetingService.processCompleteAudio(currentMeetingId, audioBuffer);
+              console.log(`Complete transcription result: "${text.slice(0, 200)}..."`);
               
               if (text.trim()) {
-                console.log(`Adding transcript segment to database: "${text}"`);
+                console.log(`Complete transcript processed successfully for meeting ${currentMeetingId}`);
                 ws.send(JSON.stringify({
-                  type: 'transcript-segment',
+                  type: 'complete-transcript',
                   meetingId: currentMeetingId,
                   text,
                   timestamp: new Date().toISOString(),
                 }));
               } else {
-                console.log('Empty transcription result - chunk may be silent or audio format issue');
+                console.log('Empty transcription result - audio may be silent or corrupted');
+                ws.send(JSON.stringify({
+                  type: 'transcript-error',
+                  meetingId: currentMeetingId,
+                  error: 'No audio content could be transcribed',
+                }));
               }
             } catch (error: any) {
               const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-              console.error(`Error processing audio chunk for meeting ${currentMeetingId}:`, errorMessage);
-              // Log specific error details but continue processing
-              if (error?.status === 400) {
-                console.log('Audio format error - chunk will be skipped');
-              }
+              console.error(`Error processing complete audio for meeting ${currentMeetingId}:`, errorMessage);
+              ws.send(JSON.stringify({
+                type: 'transcript-error',
+                meetingId: currentMeetingId,
+                error: errorMessage,
+              }));
             }
           } else {
-            console.log(`Skipping small audio chunk: ${audioBuffer.length} bytes (below 5KB threshold)`);
+            console.log(`Complete audio too small: ${audioBuffer.length} bytes (below 10KB minimum)`);
+            ws.send(JSON.stringify({
+              type: 'transcript-error',
+              meetingId: currentMeetingId,
+              error: 'Recording too short for transcription',
+            }));
           }
         } else if (data.type === 'stop-meeting' && currentMeetingId) {
           console.log(`Stopped real-time transcription for meeting ${currentMeetingId}`);

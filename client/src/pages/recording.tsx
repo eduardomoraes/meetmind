@@ -16,13 +16,7 @@ import { Pause, Square, Bookmark, CheckSquare, Share, Volume2 } from "lucide-rea
 import { useLocation } from "wouter";
 import type { Workspace } from "@shared/schema";
 
-interface TranscriptSegment {
-  id: number;
-  speakerName: string;
-  speakerAvatar?: string;
-  text: string;
-  timestamp: string;
-}
+// No longer using real-time transcript segments - processing complete audio after recording
 
 export default function Recording() {
   const { toast } = useToast();
@@ -34,7 +28,8 @@ export default function Recording() {
   const [isPaused, setIsPaused] = useState(false);
   const [currentMeetingId, setCurrentMeetingId] = useState<number | null>(null);
   const [recordingDuration, setRecordingDuration] = useState(0);
-  const [transcriptSegments, setTranscriptSegments] = useState<TranscriptSegment[]>([]);
+  const [processingStatus, setProcessingStatus] = useState<'idle' | 'processing' | 'completed' | 'error'>('idle');
+  const [processingMessage, setProcessingMessage] = useState('');
   const [stats, setStats] = useState({
     duration: 0,
     wordsTranscribed: 0,
@@ -119,19 +114,38 @@ export default function Recording() {
       const data = JSON.parse(lastMessage.data);
       
       switch (data.type) {
-        case 'transcript-segment':
-          const newSegment: TranscriptSegment = {
-            id: Date.now(),
-            speakerName: "Unknown Speaker",
-            text: data.text,
-            timestamp: new Date(data.timestamp).toLocaleTimeString(),
-          };
+        case 'complete-transcript':
+          setProcessingStatus('completed');
+          setProcessingMessage('Transcription completed successfully');
           
-          setTranscriptSegments(prev => [...prev, newSegment]);
+          // Update stats with final transcript
+          const wordCount = data.text.split(/\s+/).length;
           setStats(prev => ({
             ...prev,
-            wordsTranscribed: prev.wordsTranscribed + data.text.split(/\s+/).length,
+            wordsTranscribed: wordCount,
           }));
+
+          // Show success message and redirect to meeting detail
+          toast({
+            title: "Recording Processed",
+            description: `Successfully transcribed ${wordCount} words`,
+          });
+
+          // Redirect to meeting detail page after a short delay
+          setTimeout(() => {
+            setLocation(`/meeting/${currentMeetingId}`);
+          }, 2000);
+          break;
+          
+        case 'transcript-error':
+          setProcessingStatus('error');
+          setProcessingMessage(data.error || 'Failed to process recording');
+          
+          toast({
+            title: "Processing Error",
+            description: data.error || 'Failed to process the recording',
+            variant: "destructive",
+          });
           break;
           
         case 'error':
@@ -247,20 +261,18 @@ export default function Recording() {
         description: "Meeting recording has been saved. Generating summary...",
       });
       
-      // Reset meeting state and redirect to dashboard
+      // Set processing status and wait for audio processing
+      setProcessingStatus('processing');
+      setProcessingMessage('Processing recording and generating transcript...');
+      
+      // Reset meeting state 
       setCurrentMeetingId(null);
-      setTranscriptSegments([]);
       setStats({
         duration: 0,
         wordsTranscribed: 0,
         speakersDetected: 1,
         confidence: 95,
       });
-      
-      // Redirect to dashboard after a short delay
-      setTimeout(() => {
-        setLocation('/');
-      }, 2000);
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {

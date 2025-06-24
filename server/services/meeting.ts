@@ -90,6 +90,32 @@ export class MeetingService {
     }
   }
 
+  async processCompleteAudio(meetingId: number, audioBuffer: Buffer): Promise<string> {
+    try {
+      console.log(`Processing complete conversation audio for meeting ${meetingId}`);
+      const { text } = await transcribeAudio(audioBuffer);
+      
+      if (text.trim()) {
+        // Add the complete transcript as a single segment
+        await this.addTranscriptSegment(meetingId, text);
+        
+        // Update meeting word count
+        const meeting = await storage.getMeeting(meetingId);
+        if (meeting) {
+          const wordCount = text.split(/\s+/).length;
+          await storage.updateMeeting(meetingId, { wordCount });
+        }
+        
+        console.log(`Complete transcript processed: ${text.length} characters, ${text.split(/\s+/).length} words`);
+      }
+
+      return text;
+    } catch (error) {
+      console.error("Error processing complete audio:", error);
+      throw error;
+    }
+  }
+
   async generateMeetingSummary(meetingId: number): Promise<void> {
     try {
       const meeting = await storage.getMeeting(meetingId);
