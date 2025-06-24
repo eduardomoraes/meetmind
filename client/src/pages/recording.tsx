@@ -90,17 +90,16 @@ export default function Recording() {
   } = useAudioRecording({
     onDataAvailable: (audioData) => {
       const meetingId = currentMeetingIdRef.current;
-      console.log(`Sending audio chunk: ${audioData.length} characters (base64)`);
-      console.log(`Current meeting ID: ${meetingId}, SendMessage available: ${!!sendMessage}`);
+      console.log(`Complete recording finished: ${audioData.length} characters (base64)`);
       if (meetingId && sendMessage && connectionStatus === 'Connected') {
-        console.log(`Actually sending audio chunk for meeting ${meetingId}`);
+        console.log(`Sending complete audio for meeting ${meetingId}`);
         sendMessage({
-          type: 'audio-chunk',
+          type: 'complete-audio',
           audio: audioData,
           meetingId: meetingId,
         });
       } else {
-        console.warn(`Cannot send audio chunk - meetingId: ${meetingId}, sendMessage: ${!!sendMessage}, connection: ${connectionStatus}`);
+        console.warn(`Cannot send complete audio - meetingId: ${meetingId}, sendMessage: ${!!sendMessage}, connection: ${connectionStatus}`);
       }
     },
     onError: (error) => {
@@ -111,7 +110,7 @@ export default function Recording() {
         variant: "destructive",
       });
     },
-    timeslice: 3000, // 3-second chunks for better transcription quality
+    // No timeslice - record complete conversation
   });
 
   // Handle WebSocket messages

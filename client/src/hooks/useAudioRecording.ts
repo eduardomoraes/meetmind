@@ -14,7 +14,7 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
     onError,
     mimeType = 'audio/webm',
     audioBitsPerSecond = 128000,
-    timeslice = 3000, // Send data every 3 seconds for better transcription
+    timeslice, // No longer sending chunks during recording
   } = options;
 
   const [isRecording, setIsRecording] = useState(false);
@@ -22,6 +22,7 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const startRecording = useCallback(async () => {
     try {
@@ -75,15 +76,9 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
-          // Convert blob to base64 for transmission
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64 = reader.result as string;
-            // Remove the data URL prefix to get just the base64 data
-            const base64Data = base64.split(',')[1];
-            onDataAvailable?.(base64Data);
-          };
-          reader.readAsDataURL(event.data);
+          // Accumulate audio chunks for complete processing
+          audioChunksRef.current.push(event.data);
+          console.log(`Audio chunk recorded: ${event.data.size} bytes, total chunks: ${audioChunksRef.current.length}`);
         }
       };
 
@@ -100,6 +95,24 @@ export function useAudioRecording(options: UseAudioRecordingOptions = {}) {
 
       mediaRecorder.onstop = () => {
         setIsRecording(false);
+        
+        // Process complete audio when recording stops
+        if (audioChunksRef.current.length > 0) {
+          const completeAudioBlob = new Blob(audioChunksRef.current, { type: finalMimeType });
+          console.log(`Complete recording: ${completeAudioBlob.size} bytes from ${audioChunksRef.current.length} chunks`);
+          
+          // Convert complete audio to base64 for transmission
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64 = reader.result as string;
+            const base64Data = base64.split(',')[1];
+            onDataAvailable?.(base64Data);
+            
+            // Clear chunks for next recording
+            audioChunksRef.current = [];
+          };
+          reader.readAsDataURL(completeAudioBlob);
+        }
       };
 
       // Start recording with specified timeslice
