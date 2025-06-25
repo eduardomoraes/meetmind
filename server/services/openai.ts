@@ -19,6 +19,8 @@ export interface MeetingSummaryData {
 export async function transcribeAudio(audioBuffer: Buffer): Promise<{ text: string }> {
   try {
     console.log("Processing audio buffer for transcription:", audioBuffer.length, "bytes");
+    console.log("Audio buffer type:", audioBuffer.constructor.name);
+    console.log("First 16 bytes as hex:", audioBuffer.slice(0, 16).toString('hex'));
 
     if (audioBuffer.length < 1000) {
       console.log("Audio buffer too small for transcription:", audioBuffer.length, "bytes");

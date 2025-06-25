@@ -92,8 +92,13 @@ export class MeetingService {
 
   async processCompleteAudio(meetingId: number, audioBuffer: Buffer): Promise<string> {
     try {
-      console.log(`Processing complete conversation audio for meeting ${meetingId}`);
+      console.log(`Processing complete conversation audio for meeting ${meetingId}: ${audioBuffer.length} bytes`);
+      
+      // Add detailed logging for debugging
+      console.log(`Audio buffer first 32 bytes:`, audioBuffer.slice(0, 32));
+      
       const { text } = await transcribeAudio(audioBuffer);
+      console.log(`Transcription result: "${text}"`);
       
       if (text.trim()) {
         // Add the complete transcript as a single segment
@@ -107,6 +112,11 @@ export class MeetingService {
         }
         
         console.log(`Complete transcript processed: ${text.length} characters, ${text.split(/\s+/).length} words`);
+        
+        // Generate meeting summary after processing transcript
+        await this.generateMeetingSummary(meetingId);
+      } else {
+        console.log("No text transcribed from audio - audio may be silent or incompatible format");
       }
 
       return text;

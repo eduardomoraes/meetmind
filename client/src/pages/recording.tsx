@@ -265,8 +265,7 @@ export default function Recording() {
       setProcessingStatus('processing');
       setProcessingMessage('Processing recording and generating transcript...');
       
-      // Reset meeting state 
-      setCurrentMeetingId(null);
+      // Reset stats but keep meetingId until processing is complete
       setStats({
         duration: 0,
         wordsTranscribed: 0,
