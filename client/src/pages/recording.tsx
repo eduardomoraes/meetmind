@@ -87,14 +87,16 @@ export default function Recording() {
       const meetingId = currentMeetingIdRef.current;
       console.log(`Complete recording finished: ${audioData.length} characters (base64)`);
       if (meetingId && sendMessage && connectionStatus === 'Connected') {
-        console.log(`Sending complete audio for meeting ${meetingId}`);
+        console.log(`Sending complete audio for meeting ${meetingId}: ${audioData.length} chars`);
         sendMessage({
           type: 'complete-audio',
           audio: audioData,
           meetingId: meetingId,
         });
       } else {
-        console.warn(`Cannot send complete audio - meetingId: ${meetingId}, sendMessage: ${!!sendMessage}, connection: ${connectionStatus}`);
+        console.error(`Cannot send complete audio - meetingId: ${meetingId}, sendMessage: ${!!sendMessage}, connection: ${connectionStatus}`);
+        setProcessingStatus('error');
+        setProcessingMessage('Failed to send audio for processing - connection lost');
       }
     },
     onError: (error) => {
@@ -131,9 +133,18 @@ export default function Recording() {
             description: `Successfully transcribed ${wordCount} words`,
           });
 
-          // Redirect to meeting detail page after a short delay
+          // Now send stop-meeting to close WebSocket session
+          if (sendMessage) {
+            sendMessage({
+              type: 'stop-meeting',
+            });
+          }
+
+          // Clear meeting ID and redirect to meeting detail page
+          const meetingIdToView = currentMeetingId;
+          setCurrentMeetingId(null);
           setTimeout(() => {
-            setLocation(`/meeting/${currentMeetingId}`);
+            setLocation(`/meeting/${meetingIdToView}`);
           }, 2000);
           break;
           
@@ -146,6 +157,16 @@ export default function Recording() {
             description: data.error || 'Failed to process the recording',
             variant: "destructive",
           });
+
+          // Send stop-meeting to close WebSocket session even on error
+          if (sendMessage) {
+            sendMessage({
+              type: 'stop-meeting',
+            });
+          }
+
+          // Clear meeting ID after error
+          setCurrentMeetingId(null);
           break;
           
         case 'error':
@@ -241,15 +262,11 @@ export default function Recording() {
       setIsRecording(false);
       setIsPaused(false);
       
-      // Stop WebSocket meeting session
-      if (sendMessage) {
-        sendMessage({
-          type: 'stop-meeting',
-        });
-      }
-      
-      // Stop audio recording
+      // Stop audio recording first to capture complete audio
       stopAudioRecording();
+      
+      // Keep WebSocket connection open for complete audio processing
+      // Don't send stop-meeting until after audio is processed
       
       // Invalidate meetings cache to update dashboard
       queryClient.invalidateQueries({ queryKey: [`/api/workspaces/${selectedWorkspaceId}/meetings`] });

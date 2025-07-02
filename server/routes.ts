@@ -274,6 +274,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ws.on('message', async (message: Buffer) => {
       try {
         const data = JSON.parse(message.toString());
+        console.log(`WebSocket received message type: ${data.type}, meetingId: ${data.meetingId || 'none'}, currentMeetingId: ${currentMeetingId}`);
 
         if (data.type === 'start-meeting') {
           currentMeetingId = data.meetingId;
