@@ -9,6 +9,8 @@ AI-powered meeting productivity application that transforms collaboration throug
 - Enable chat functionality with conversation context
 
 ## Recent Changes
+- **2025-07-08**: Created comprehensive README.md file with best practices
+- **2025-07-02**: Fixed WebSocket timing issue preventing complete audio processing
 - **2025-06-23**: Modified audio processing from real-time chunks to full conversation analysis
 - **2025-06-23**: Implemented multi-format audio transcription with fallback system
 - **2025-06-23**: Enhanced OpenAI integration for post-meeting processing
