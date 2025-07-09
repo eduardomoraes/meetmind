@@ -217,7 +217,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Support
 
-For support, please contact [your-email@example.com] or open an issue in the repository.
+For support, please contact eduardodmoraes@gmail.com or open an issue in the repository.
 
 ## Acknowledgments
 
